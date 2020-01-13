@@ -1,0 +1,66 @@
+<!doctype html>
+<!--
+Copyright 2018 The Go Authors. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+-->
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="style.css">
+	<title>Go wasm</title>
+</head>
+
+<body>
+	<!--
+	Add the following polyfill for Microsoft Edge 17/18 support:
+	<script src="https://cdn.jsdelivr.net/npm/text-encoding@0.7.0/lib/encoding.min.js"></script>
+	(see https://caniuse.com/#feat=textencoder)
+	-->
+	<script src="wasm_exec.js"></script>
+	<script>
+		if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
+		const go = new Go();
+		let mod, inst;
+		WebAssembly.instantiateStreaming(fetch("goboy.wasm"), go.importObject).then((result) => {
+			mod = result.module;
+			inst = result.instance;
+			document.getElementById("wasmButton").disabled = false;
+		}).catch((err) => {
+			console.error(err);
+		});
+
+		async function runWASM() {
+			console.clear();
+			document.getElementById("stopButton").disabled = false;
+			document.getElementById("wasmButton").disabled = true;
+			await go.run(inst);
+			inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+		}
+
+		function stop() {
+			window.stopWASM();
+			document.getElementById("stopButton").disabled = true;
+			document.getElementById("wasmButton").disabled = false;
+			console.log('stopping');
+		}
+	</script>
+
+	<button onClick="runWASM();" id="wasmButton" disabled>Run WASM</button>
+	<button onClick="stop();" id="stopButton" disabled>Stop</button>
+	<span>
+		<span id="fps">---</span> fps
+	</span>
+	<br/>
+	<br/>
+	<canvas id="target" width="160px" height="144px"></canvas>
+</body>
+
+</html>
