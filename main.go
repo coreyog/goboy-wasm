@@ -79,6 +79,7 @@ func onFrame(this js.Value, args []js.Value) interface{} {
 	// update FPS in DOM
 	text := fmt.Sprintf("fps: %0.0f\n", 1/dt)
 	fps.Set("innerHTML", text)
+	fmt.Println(text)
 
 	// inset colored rectangle
 	draw.Draw(img, image.Rect(10, 10, width-10, height-10), image.NewUniform(gradient.Keypoints.GetInterpolatedColorFor(progress)), image.Point{}, draw.Src)
