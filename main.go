@@ -59,6 +59,12 @@ func main() {
 
 	// wait for call to stopWASM
 	<-killSwitch
+
+	// fill the image with white and clear the canvas
+	draw.Draw(img, image.Rect(0, 0, width, height), image.NewUniform(colornames.White), image.Point{}, draw.Src)
+	drawImage(ctx, img)
+
+	fps.Set("innerHTML", "---")
 }
 
 func onFrame(this js.Value, args []js.Value) interface{} {
