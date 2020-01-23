@@ -20,6 +20,11 @@ var ctx js.Value
 var requestAnimationFrame js.Value
 var jsOnFrame js.Func
 var console js.Value
+var audioCtx js.Value
+var audioCtxDest js.Value
+var oscillator js.Value
+var gain js.Value
+var curGain float32
 var fps js.Value
 var img *image.RGBA
 var progress float64
@@ -38,11 +43,25 @@ func main() {
 		return
 	}
 
+	// setup video stuff
 	fps = document.Call("getElementById", "fps")
 	console = js.Global().Get("console")
 	ctx = canvas.Call("getContext", "2d")
 	requestAnimationFrame = js.Global().Get("requestAnimationFrame")
 	jsOnFrame = js.FuncOf(onFrame)
+
+	// setup audio stuff
+	audioCtxFunc := js.Global().Get("AudioContext")
+	audioCtx = audioCtxFunc.New()
+	audioCtxDest = audioCtx.Get("destination")
+	oscillator = audioCtx.Call("createOscillator")
+	oscillator.Set("type", "square")
+	gain = audioCtx.Call("createGain")
+	oscillator.Call("connect", gain)
+	gain.Call("connect", audioCtxDest)
+	curGain = 0.05
+	gain.Get("gain").Set("value", curGain)
+	oscillator.Call("start")
 
 	// create image
 	img = image.NewRGBA(image.Rect(0, 0, width, height))
@@ -59,6 +78,8 @@ func main() {
 
 	// wait for call to stopWASM
 	<-killSwitch
+
+	oscillator.Call("stop")
 
 	// fill the image with white and clear the canvas
 	draw.Draw(img, image.Rect(0, 0, width, height), image.NewUniform(colornames.White), image.Point{}, draw.Src)
@@ -81,11 +102,12 @@ func onFrame(this js.Value, args []js.Value) interface{} {
 	ts := args[0].Float()      // in milliseconds since start
 	dt := (ts - prevTS) / 1000 // in seconds
 	prevTS = ts
+	ts /= 1000 // in seconds
 
 	// update FPS in DOM
 	text := fmt.Sprintf("fps: %0.0f\n", 1/dt)
 	fps.Set("innerHTML", text)
-	fmt.Println(text)
+	// fmt.Println(text)
 
 	// inset colored rectangle
 	draw.Draw(img, image.Rect(10, 10, width-10, height-10), image.NewUniform(gradient.Keypoints.GetInterpolatedColorFor(progress)), image.Point{}, draw.Src)
@@ -96,6 +118,8 @@ func onFrame(this js.Value, args []js.Value) interface{} {
 	if progress > 1 {
 		progress -= 1
 	}
+
+	playAudio(ts, dt)
 
 	return js.Null()
 }
@@ -130,6 +154,17 @@ func drawImage(ctx js.Value, img *image.RGBA) {
 
 	// put it on the canvas
 	ctx.Call("putImageData", imgData, 0, 0)
+}
+
+func playAudio(ts float64, dt float64) {
+	if int(ts) != int(ts-dt) {
+		if curGain != 0 {
+			curGain = 0
+		} else {
+			curGain = 0.05
+		}
+		gain.Get("gain").Set("value", curGain)
+	}
 }
 
 func stopWASM(this js.Value, args []js.Value) interface{} {
