@@ -68,11 +68,29 @@ license that can be found in the LICENSE file.
 
 			source.start();
 		}
+
+		function readSingleFile(e) {
+			var file = e.target.files[0];
+			if (!file) {
+				return;
+			}
+			var reader = new FileReader();
+			reader.onload = function(e) {
+				var contents = new Uint8Array(e.target.result);
+				console.log(contents);
+				if (window.loadROM) {
+					console.log('loading...');
+					window.loadROM(contents);
+				}
+			};
+			reader.readAsArrayBuffer(file);
+		}
 	</script>
 
 	<button onClick="runWASM();" id="wasmButton" disabled>Run WASM</button>
 	<button onClick="stop();" id="stopButton" disabled>Stop</button>
 	<button onClick="playSoundBuffer();">Play 1s Sound (JS)</button>
+	<input type="file" id="file-input" />
 	<span>
 		<span id="fps">---</span>
 	</span>
@@ -80,5 +98,8 @@ license that can be found in the LICENSE file.
 	<br/>
 	<canvas id="target" width="160px" height="144px"></canvas>
 </body>
+<script>
+	document.getElementById('file-input').addEventListener('change', readSingleFile, false);
+</script>
 
 </html>

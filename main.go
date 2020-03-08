@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"strings"
 	"syscall/js"
 
 	"github.com/coreyog/goboy-wasm/gradient"
+
+	"github.com/coreyog/goboy/rom"
 
 	"golang.org/x/image/colornames"
 )
@@ -61,7 +64,7 @@ func main() {
 	gain.Call("connect", audioCtxDest)
 	curGain = 0.05
 	gain.Get("gain").Set("value", curGain)
-	oscillator.Call("start")
+	// oscillator.Call("start")
 
 	// create image
 	img = image.NewRGBA(image.Rect(0, 0, width, height))
@@ -75,11 +78,12 @@ func main() {
 
 	// register kill switch
 	js.Global().Set("stopWASM", js.FuncOf(stopWASM))
+	js.Global().Set("loadROM", js.FuncOf(loadROM))
 
 	// wait for call to stopWASM
 	<-killSwitch
 
-	oscillator.Call("stop")
+	// oscillator.Call("stop")
 
 	// fill the image with white and clear the canvas
 	draw.Draw(img, image.Rect(0, 0, width, height), image.NewUniform(colornames.White), image.Point{}, draw.Src)
@@ -102,7 +106,7 @@ func onFrame(this js.Value, args []js.Value) interface{} {
 	ts := args[0].Float()      // in milliseconds since start
 	dt := (ts - prevTS) / 1000 // in seconds
 	prevTS = ts
-	ts /= 1000 // in seconds
+	// ts /= 1000 // in seconds
 
 	// update FPS in DOM
 	text := fmt.Sprintf("fps: %0.0f\n", 1/dt)
@@ -119,7 +123,7 @@ func onFrame(this js.Value, args []js.Value) interface{} {
 		progress -= 1
 	}
 
-	playAudio(ts, dt)
+	// playAudio(ts, dt)
 
 	return js.Null()
 }
@@ -156,15 +160,40 @@ func drawImage(ctx js.Value, img *image.RGBA) {
 	ctx.Call("putImageData", imgData, 0, 0)
 }
 
-func playAudio(ts float64, dt float64) {
-	if int(ts) != int(ts-dt) {
-		if curGain != 0 {
-			curGain = 0
-		} else {
-			curGain = 0.05
-		}
-		gain.Get("gain").Set("value", curGain)
+// func playAudio(ts float64, dt float64) {
+// 	if int(ts) != int(ts-dt) {
+// 		if curGain != 0 {
+// 			curGain = 0
+// 		} else {
+// 			curGain = 0.05
+// 		}
+// 		gain.Get("gain").Set("value", curGain)
+// 	}
+// }
+
+func loadROM(this js.Value, args []js.Value) interface{} {
+	fmt.Printf("WASM - loading ROM (%d)\n", len(args))
+	if len(args) != 1 {
+		fmt.Printf("invalid number of args, expected 1, got %d", len(args))
+		return js.Null()
 	}
+
+	array := args[0]
+	conName := array.Get("constructor").Get("name").String()
+
+	if !strings.EqualFold(conName, "uint8array") {
+		fmt.Printf("invalid argument, expected: Uint8Array, actual: %s\n", conName)
+		return js.Null()
+	}
+
+	size := int(array.Get("byteLength").Float())
+	data := make([]byte, size)
+
+	js.CopyBytesToGo(data, array)
+
+	rom.Load(data)
+
+	return js.Null()
 }
 
 func stopWASM(this js.Value, args []js.Value) interface{} {

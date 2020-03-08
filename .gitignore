@@ -37,3 +37,5 @@
 
 dist/goboy.wasm
 __debug_go
+
+*.gb
