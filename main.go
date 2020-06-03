@@ -9,7 +9,7 @@ import (
 
 	"github.com/coreyog/goboy-wasm/gradient"
 
-	"github.com/coreyog/goboy/rom"
+	"github.com/coreyog/goboy"
 
 	"golang.org/x/image/colornames"
 )
@@ -35,7 +35,12 @@ var prevTS float64
 var killSwitch chan struct{}
 var closing bool
 
+var gb *goboy.GameBoy
+
 func main() {
+
+	gb = &goboy.GameBoy{}
+
 	// prep state
 	killSwitch = make(chan struct{})
 	document := js.Global().Get("document")
@@ -104,9 +109,8 @@ func onFrame(this js.Value, args []js.Value) interface{} {
 
 	// determine timestamp and delta time
 	ts := args[0].Float()      // in milliseconds since start
-	dt := (ts - prevTS) / 1000 // in seconds
+	dt := (ts - prevTS) / 1000 // in seconds since last frame
 	prevTS = ts
-	// ts /= 1000 // in seconds
 
 	// update FPS in DOM
 	text := fmt.Sprintf("fps: %0.0f\n", 1/dt)
@@ -191,7 +195,7 @@ func loadROM(this js.Value, args []js.Value) interface{} {
 
 	js.CopyBytesToGo(data, array)
 
-	rom.Load(data)
+	gb.LoadROM(data)
 
 	return js.Null()
 }
