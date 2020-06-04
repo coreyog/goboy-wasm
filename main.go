@@ -197,6 +197,8 @@ func loadROM(this js.Value, args []js.Value) interface{} {
 
 	gb.LoadROM(data)
 
+	gb.RunFrame()
+
 	return js.Null()
 }
 
